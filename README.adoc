@@ -19,3 +19,5 @@ int main()
    // return 0 is implicit
 }
 ----
+
+TIP: Pro *testovací účely* se může hodit služba https://asciidoclive.com/[asciidocLIVE].
