@@ -2,16 +2,14 @@
 #define MPC_SMALL_VECTOR
 
 #include <cstddef>
+#include <initializer_list>
 
 namespace mpc {
 
 template <typename T, size_t N>
 class small_vector {
 public:
-    small_vector(){
-        this->mCapacity = N;
-        this->mSize = 0;
-    }
+    small_vector() : mData(reinterpret_cast<T*>(mBuff)), mSize(0), mCapacity(N){}
 
     small_vector(const small_vector& other){
         // todo: kopírovací konstruktor. Po konstrukci vektoru bude jeho obsah stejný, jako obsah vektoru other. Tj., bude v sobě mít uložený stejný počet prvků a prvky na stejných pozicích budou mít stejné hodnoty (z hledika jejich sémantiky).
@@ -68,12 +66,20 @@ public:
         //
     }
     void push_back(const T& value) {
+        if (!this->size() < N) {
+            this->mBuff[this->mSize];
+        } else if (this->size() >= this->capacity()){
+            //todo: allocation
+        } else {
+            
+        }
         // todo: vloží na konec vektoru nový prvek, který vznikne kopírováním obsahu z parametru value.
         //    Pro volání této funkce musí hodnotový typ vektoru podporovat kopírovací sémantiku.
     }
     void push_back(T&& value) {
         // todo: vloží na konec vektoru nový prvek, který vnikne přesunem obsahu z parametru value.
     };
+
     template <typename... Ts> void emplace_back(Ts&&... vs){
         // todo: vloží na konec vektoru nový prvek, pro jehož konstrukci budou jako argumenty předány parametry vs..., a to pomocí techniky perfect forwarding.v
     }
@@ -93,7 +99,7 @@ public:
     const T& operator[](size_t index) const {
         // todo: vrací referenci na prvek vektoru na pozici index (varianta pro konstantní vektor)
     }
-    iterator begin() {
+    /*iterator begin() {
         // todo: vrací iterátor na první prvek vektoru.
     }
     const_iterator begin() const {
@@ -104,7 +110,7 @@ public:
     }
     const_iterator end() const {
         // todo:  vrací konstantní iterátor za poslední prvek konstantního vektoru.
-    }
+    }*/
     void swap(small_vector& other) {
         // todo: prohodí obsah vektoru s vektorem other.v
     }
@@ -112,8 +118,8 @@ public:
 private:
     size_t mCapacity{};
     size_t mSize{};
-    T _data_cache[N];
-    T* _data = nullptr;
+    alignas(alignof(std::max_align_t)) T mBuff[N];
+    T* mData = nullptr;
 
 
 }; // class small vector
