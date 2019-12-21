@@ -6,6 +6,6 @@
 int main() {
     basicTest();
     alignTest();
-    //test1();
+    test1();
 }
 
