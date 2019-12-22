@@ -131,10 +131,10 @@ namespace mpc {
             return reinterpret_cast<T *>(this->mData);
         };
 
-        /*const_pointer data() const {
-          //todo:   vrátí ukazatel na první prvek vektoru (varianta pro konstantní vektor).
-        }*/
-
+        const T* data() const {
+            return reinterpret_cast<const T *>(this->mData);
+          // vrátí ukazatel na první prvek vektoru (varianta pro konstantní vektor).
+        }
 
         void clear() {
             for (int i = this->mSize - 1; i >= 0; i--) {
@@ -250,18 +250,22 @@ namespace mpc {
             // vrací referenci na prvek vektoru na pozici index (varianta pro konstantní vektor)
         }
 
-        /*iterator begin() {
-            // todo: vrací iterátor na první prvek vektoru.
+        T* begin() {
+            return reinterpret_cast<T *>(&this->mData[0]);
+            //  vrací iterátor na první prvek vektoru.
         }
-        const_iterator begin() const {
-            // todo: vrací konstantní iterátor na první prvek konstantního vektoru.
+        const T* begin() const {
+            return *reinterpret_cast<const T *>(&this->mData[0]);
+            //  vrací konstantní iterátor na první prvek konstantního vektoru.
         }
-        iterator end() {
-            // todo: vrací iterátor za poslední prvek vektoru.
+        T* end() {
+            return reinterpret_cast<T *>(&this->mData[this->mSize]);
+            // vrací iterátor za poslední prvek vektoru.
         }
-        const_iterator end() const {
-            // todo:  vrací konstantní iterátor za poslední prvek konstantního vektoru.
-        }*/
+        const T* end() const {
+            return *reinterpret_cast<const T *>(&this->mData[this->mSize]);
+            //   vrací konstantní iterátor za poslední prvek konstantního vektoru.
+        }
 
         void swap(small_vector &other) {
             if (this == &other) return;
