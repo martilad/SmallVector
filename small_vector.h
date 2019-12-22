@@ -5,13 +5,16 @@
 #include <initializer_list>
 #include <algorithm>
 #include <iostream>
+#include <memory>
 
 namespace mpc {
 
 template <typename T, size_t N>
 class small_vector {
 public:
-    small_vector() : mCapacity(N), mSize(0), mData(reinterpret_cast<T*>(mBuff)) {}
+    small_vector() : mCapacity(N), mSize(0), mData(reinterpret_cast<typename std::aligned_storage<sizeof(T), alignof(T)>::type*>(mBuff)){
+        
+    }
 
     small_vector(const small_vector& other){
         // todo: kopírovací konstruktor. Po konstrukci vektoru bude jeho obsah stejný, jako obsah vektoru other. Tj., bude v sobě mít uložený stejný počet prvků a prvky na stejných pozicích budou mít stejné hodnoty (z hledika jejich sémantiky).
@@ -29,8 +32,12 @@ public:
     }
 
     ~small_vector(){
-        // todo: destruktor. Korektně destruuje všechny prvky vektoru a případně uvolní dynamicky alokovanou paměť.
+        // destruktor. Korektně destruuje všechny prvky vektoru a případně uvolní dynamicky alokovanou paměť.
         // Destruktor sám o sobě nesmí vyhodit výjimku.
+        this->clear();
+        if (this->mSize > N){
+            delete(this->mData); // deallocate original memory
+        }
     }
 
     small_vector& operator=(const small_vector& other){
@@ -52,7 +59,7 @@ public:
     }
 
     T* data(){
-        return this->mData;
+        return reinterpret_cast<T*>(this->mData);
     };
 
     /*const_pointer data() const {
@@ -61,22 +68,39 @@ public:
 
 
     void clear (){
-        for (int i = this->mSize; i >= 0; i--){
-            this->mData[i].~T();
+        /*if (this->mSize <= N){
+            for (int i = this->mSize; i >= 0; i--){
+                this->mData[i].~T();
+            }
+        }else{
+            for (int i = this->mSize; i >= 0; i--){
+                delete this->mData[i];
+            }
+        }*/
+        for (int i = this->mSize-1; i >= 0; i--){
+            //std::cout << "vole" << std::endl;
+            reinterpret_cast<T*>(&this->mData[i])->~T();
         }
         this->mSize = 0;
         // todo: vymaže obsah vektoru, tj. destruuje všechny jeho prvky, a to v klesajícím pořadí jejich pozic (indexů).
     }
 
     void reserve(size_t capacity){
-        if (capacity > this->mCapacity){
-            T* tmp = new T[capacity];
-            for (size_t i = 0; i < this->mSize; i++){
-                tmp[i] = T(std::move_if_noexcept(this->mData[i]));
-            }
-            this->mData = tmp;
-            this->mCapacity = capacity;
+        if (capacity <= this->mCapacity) return;
+        typename std::aligned_storage<sizeof(T), alignof(T)>::type* tmp = new typename std::aligned_storage<sizeof(T), alignof(T)>::type[capacity];
+        size_t i = 0;
+        for (; i < this->mSize; i++){
+            //return ;
+            new (tmp + i) T(std::move_if_noexcept(*reinterpret_cast<T*>(&this->mData[i])));
         }
+        clear(); // destroy original (now empty) elements
+        if (this->mSize > N){
+            delete(this->mData); // deallocate original memory
+        }
+        this->mData = tmp;
+        this->mCapacity = capacity;
+        this->mSize = i;
+
         // potenciálně zvýší kapacitu vektoru na hodnotu parametru capacity.
         //    Pokud je capacity menší nebo rovno aktuální kapacitě, nemá tato funkce žádný efekt.
         //    V opačném případě funkce zvýší kapacitu na capacity prvků, tj. naalokuje nový buffer a do něj přesune stávající obsah vektoru.
@@ -86,35 +110,51 @@ public:
     }
     void push_back(const T& value) {
         if (this->size() < N) {
+            new (&this->mBuff[this->mSize]) T(value);
             this->mBuff[this->mSize](new T(*value));
         } else if (this->size() >= this->capacity()){
             this->reserve(this->mCapacity*2);
-            this->mCapacity *= 2;
-            this->mData[this->mSize](new T(*value));
+            new (this->mData + this->mSize) T(value);
         } else {
-            this->mData[this->mSize](new T(*value));
+            new (this->mData + this->mSize) T(value);
         }
         this->mSize++;
-
-        // todo: vloží na konec vektoru nový prvek, který vznikne kopírováním obsahu z parametru value.
+        //  vloží na konec vektoru nový prvek, který vznikne kopírováním obsahu z parametru value.
         //    Pro volání této funkce musí hodnotový typ vektoru podporovat kopírovací sémantiku.
     }
 
     void push_back(T&& value) {
         if (this->mSize < N) {
-            this->mBuff[this->mSize] = T(std::move(value));
+            new (&this->mBuff[this->mSize]) T(std::move(value));
+            //this->mBuff[this->mSize](T(std::move(value)));
+            //this->mBuff[this->mSize](new T(std::move(value)));
+            //this->mBuff[this->mSize](new T(std::move(value)));
         } else if (this->mSize >= this->mCapacity){
+
             this->reserve(this->mCapacity*2);
-            this->mData[this->mSize] = T(std::move(value));
+            new (this->mData + this->mSize) T(std::move(value));
         } else {
-            this->mData[this->mSize] = T(std::move(value));
+            new (this->mData + this->mSize) T(std::move(value));
         }
         this->mSize++;
         //  vloží na konec vektoru nový prvek, který vnikne přesunem obsahu z parametru value.
     };
 
     template <typename... Ts> void emplace_back(Ts&&... vs){
-        // todo: vloží na konec vektoru nový prvek, pro jehož konstrukci budou jako argumenty předány parametry vs..., a to pomocí techniky perfect forwarding.v
+        if (this->mSize < N) {
+            new (&this->mBuff[this->mSize]) T(std::forward<Ts>(vs)...);
+            //this->mBuff[this->mSize](T(std::move(value)));
+            //this->mBuff[this->mSize](new T(std::move(value)));
+            //this->mBuff[this->mSize](new T(std::move(value)));
+        } else if (this->mSize >= this->mCapacity){
+            this->reserve(this->mCapacity*2);
+            new (this->mData + this->mSize) T(std::forward<Ts>(vs)...);
+        } else {
+            new (this->mData + this->mSize) T(std::forward<Ts>(vs)...);
+        }
+        this->mSize++;
+        //new (this->mData + this->mSize) T(std::forward<Ts>(vs)...);
+        // vloží na konec vektoru nový prvek, pro jehož konstrukci budou jako argumenty předány parametry vs..., a to pomocí techniky perfect forwarding.v
     }
 
     void resize(size_t size, const T& value = T()){
@@ -127,12 +167,13 @@ public:
     }
 
     T& operator[](size_t index) {
-        return this->mData[index];
+        return *reinterpret_cast<T*>(&this->mData[index]);
+        //return this->mData[index];
         //  vrací referenci na prvek vektoru na pozici index.
     }
 
     const T& operator[](size_t index) const {
-        return this->mData[index];
+        return *reinterpret_cast<const T*>(&this->mData[index]);
         // vrací referenci na prvek vektoru na pozici index (varianta pro konstantní vektor)
     }
 
@@ -155,8 +196,10 @@ public:
 private:
     size_t mCapacity{};
     size_t mSize{};
-    alignas(alignof(std::max_align_t)) T mBuff[N];
-    T* mData = nullptr;
+    // properly aligned uninitialized storage for N T's
+    typename std::aligned_storage<sizeof(T), alignof(T)>::type mBuff[N];
+    //alignas(alignof(T)) T mBuff[N * sizeof(T)];
+    typename std::aligned_storage<sizeof(T), alignof(T)>::type* mData = nullptr;
 
 
 }; // class small vector
