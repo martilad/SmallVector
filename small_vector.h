@@ -32,7 +32,8 @@ namespace mpc {
                 }
             }
             this->mSize = other.mSize;
-            // kopírovací konstruktor. Po konstrukci vektoru bude jeho obsah stejný, jako obsah vektoru other. Tj., bude v sobě mít uložený stejný počet prvků a prvky na stejných pozicích budou mít stejné hodnoty (z hledika jejich sémantiky).
+            // kopírovací konstruktor. Po konstrukci vektoru bude jeho obsah stejný, jako obsah vektoru other.
+            // Tj., bude v sobě mít uložený stejný počet prvků a prvky na stejných pozicích budou mít stejné hodnoty (z hledika jejich sémantiky).
             // Prvky nového vektoru musí být zkonstruovány pomocí kopírovací sémantiky, tj. vzniknou jako kopie příslušného prvku vektoru other.
             // Pro volání toho konstruktoru musí hodnotový typ vektoru kopírovací sémantiku podporovat.
         }
@@ -52,7 +53,8 @@ namespace mpc {
                 }
             }
             this->mSize = other.mSize;
-            // přesouvací konstruktor. Po konstrukci vektoru bude jeho obsah stejný, jako byl obsah vektoru other před touto operací. Obsah vektoru other se bude po této operaci nacházet ve stavu prázdného vektoru.
+            // přesouvací konstruktor. Po konstrukci vektoru bude jeho obsah stejný, jako byl obsah vektoru other před touto operací.
+            // Obsah vektoru other se bude po této operaci nacházet ve stavu prázdného vektoru.
         }
 
         small_vector(std::initializer_list<T> init) {
@@ -64,18 +66,50 @@ namespace mpc {
             // destruktor. Korektně destruuje všechny prvky vektoru a případně uvolní dynamicky alokovanou paměť.
             // Destruktor sám o sobě nesmí vyhodit výjimku.
             this->clear();
-            if (this->mSize > N) {
-                delete (this->mData); // deallocate original memory
+            if (this->allocated) {
+                delete []this->mData; // deallocate original memory
             }
         }
 
         small_vector &operator=(const small_vector &other) {
-            // todo: kopírovací přiřazovací operátor. Po aplikaci operátoru bude obsah vektoru stejný, jako obsah vektoru other.
+            this->clear();
+            this->reserve(other.mCapacity);
+            if (other.mSize > N || this->allocated) {
+                size_t i = 0;
+                for (; i < other.mSize; i++) {
+                    new(this->mData + i) T(*reinterpret_cast<T *>(&other.mData[i]));
+                }
+            } else {
+                size_t i = 0;
+                for (; i < other.mSize; i++) {
+                    new(&this->mBuff[i]) T(*reinterpret_cast<T *>(&other.mData[i]));
+                }
+            }
+            this->mSize = other.mSize;
+            return *this;
+            // kopírovací přiřazovací operátor. Po aplikaci operátoru bude obsah vektoru stejný, jako obsah vektoru other.
             // Vrací referenci na sebe sama.
         }
 
         small_vector &operator=(small_vector &&other) {
-            // todo: přesouvací přiřazovací operátor. Po aplikaci operátoru bude obsah vektoru stejný, jako byl obsah vektoru other před touto operací. Obsah vektoru other se bude po této operaci nacházet ve stavu prázdného vektoru.
+            this->clear();
+            this->reserve(other.mCapacity);
+            if (other.mSize > N || this->allocated) {
+                size_t i = 0;
+                for (; i < other.mSize; i++) {
+                    new(this->mData + i) T(std::move_if_noexcept(*reinterpret_cast<T *>(&other.mData[i])));
+                }
+            } else {
+                size_t i = 0;
+                for (; i < other.mSize; i++) {
+                    new(&this->mBuff[i]) T(std::move_if_noexcept(*reinterpret_cast<T *>(&other.mData[i])));
+                }
+            }
+            this->mSize = other.mSize;
+            other.clear();
+            return *this;
+            // přesouvací přiřazovací operátor. Po aplikaci operátoru bude obsah vektoru stejný,
+            //  jako byl obsah vektoru other před touto operací. Obsah vektoru other se bude po této operaci nacházet ve stavu prázdného vektoru.
             // Vrací referenci na sebe sama.
         }
 
@@ -97,38 +131,30 @@ namespace mpc {
 
 
         void clear() {
-            /*if (this->mSize <= N){
-                for (int i = this->mSize; i >= 0; i--){
-                    this->mData[i].~T();
-                }
-            }else{
-                for (int i = this->mSize; i >= 0; i--){
-                    delete this->mData[i];
-                }
-            }*/
             for (int i = this->mSize - 1; i >= 0; i--) {
-                //std::cout << "vole" << std::endl;
                 reinterpret_cast<T *>(&this->mData[i])->~T();
             }
             this->mSize = 0;
-            // todo: vymaže obsah vektoru, tj. destruuje všechny jeho prvky, a to v klesajícím pořadí jejich pozic (indexů).
+            // vymaže obsah vektoru, tj. destruuje všechny jeho prvky, a to v klesajícím pořadí jejich pozic (indexů).
         }
 
         void reserve(size_t capacity) {
             if (capacity <= this->mCapacity) return;
+            // allocate new memory
             auto *tmp = new typename std::aligned_storage<sizeof(T), alignof(T)>::type[capacity];
             size_t i = 0;
             for (; i < this->mSize; i++) {
-                //return ;
+                // move from old
                 new(tmp + i) T(std::move_if_noexcept(*reinterpret_cast<T *>(&this->mData[i])));
             }
             clear(); // destroy original (now empty) elements
-            if (this->mSize > N) {
-                delete (this->mData); // deallocate original memory
+            if (this->allocated) {
+                delete []this->mData; // deallocate original memory
             }
             this->mData = tmp;
             this->mCapacity = capacity;
             this->mSize = i;
+            this->allocated = true;
 
             // potenciálně zvýší kapacitu vektoru na hodnotu parametru capacity.
             //    Pokud je capacity menší nebo rovno aktuální kapacitě, nemá tato funkce žádný efekt.
@@ -141,7 +167,6 @@ namespace mpc {
         void push_back(const T &value) {
             if (this->size() < N) {
                 new(&this->mBuff[this->mSize]) T(value);
-                //this->mBuff[this->mSize](new T(*value));
             } else if (this->size() >= this->capacity()) {
                 this->reserve(this->mCapacity * 2);
                 new(this->mData + this->mSize) T(value);
@@ -156,11 +181,7 @@ namespace mpc {
         void push_back(T &&value) {
             if (this->mSize < N) {
                 new(&this->mBuff[this->mSize]) T(std::move(value));
-                //this->mBuff[this->mSize](T(std::move(value)));
-                //this->mBuff[this->mSize](new T(std::move(value)));
-                //this->mBuff[this->mSize](new T(std::move(value)));
             } else if (this->mSize >= this->mCapacity) {
-
                 this->reserve(this->mCapacity * 2);
                 new(this->mData + this->mSize) T(std::move(value));
             } else {
@@ -174,9 +195,6 @@ namespace mpc {
         void emplace_back(Ts &&... vs) {
             if (this->mSize < N) {
                 new(&this->mBuff[this->mSize]) T(std::forward<Ts>(vs)...);
-                //this->mBuff[this->mSize](T(std::move(value)));
-                //this->mBuff[this->mSize](new T(std::move(value)));
-                //this->mBuff[this->mSize](new T(std::move(value)));
             } else if (this->mSize >= this->mCapacity) {
                 this->reserve(this->mCapacity * 2);
                 new(this->mData + this->mSize) T(std::forward<Ts>(vs)...);
@@ -184,7 +202,6 @@ namespace mpc {
                 new(this->mData + this->mSize) T(std::forward<Ts>(vs)...);
             }
             this->mSize++;
-            //new (this->mData + this->mSize) T(std::forward<Ts>(vs)...);
             // vloží na konec vektoru nový prvek, pro jehož konstrukci budou jako argumenty předány parametry vs..., a to pomocí techniky perfect forwarding.v
         }
 
@@ -225,6 +242,7 @@ namespace mpc {
         }
 
     private:
+        bool allocated = false;
         size_t mCapacity{};
         size_t mSize{};
         // properly aligned uninitialized storage for N T's
