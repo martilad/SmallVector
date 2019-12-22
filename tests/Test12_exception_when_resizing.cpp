@@ -40,11 +40,11 @@ int main()
     {
         assert(strcmp(e.what(), "copy error") == 0);
     }
-
     assert(v.size() == 2);
     assert(v.capacity() == 2);
     assert(v[0] == 1);
     assert(v[1] == 2);
+    return 0;
 }
 
 }

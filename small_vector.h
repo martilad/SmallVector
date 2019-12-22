@@ -131,9 +131,9 @@ namespace mpc {
             return reinterpret_cast<T *>(this->mData);
         };
 
-        const T* data() const {
+        const T *data() const {
             return reinterpret_cast<const T *>(this->mData);
-          // vrátí ukazatel na první prvek vektoru (varianta pro konstantní vektor).
+            // vrátí ukazatel na první prvek vektoru (varianta pro konstantní vektor).
         }
 
         void clear() {
@@ -147,21 +147,29 @@ namespace mpc {
         void reserve(size_t capacity) {
             if (capacity <= this->mCapacity) return;
             // allocate new memory
-            auto *tmp = new typename std::aligned_storage<sizeof(T), alignof(T)>::type[capacity];
-            size_t i = 0;
-            for (; i < this->mSize; i++) {
-                // move from old
-                new(tmp + i) T(std::move_if_noexcept(*reinterpret_cast<T *>(&this->mData[i])));
+            typename std::aligned_storage<sizeof(T), alignof(T)>::type *tmp = nullptr;
+            try {
+                tmp = new typename std::aligned_storage<sizeof(T), alignof(T)>::type[capacity];
+                size_t i = 0;
+                for (; i < this->mSize; i++) {
+                    // move from old
+                    new(tmp + i) T(std::move_if_noexcept(*reinterpret_cast<T *>(&this->mData[i])));
+                }
+                clear(); // destroy original (now empty) elements
+                if (this->mIsAllocated) {
+                    delete[]this->mData; // deallocate original memory
+                }
+                this->mData = tmp;
+                this->mCapacity = capacity;
+                this->mSize = i;
+                this->mIsAllocated = true;
+            } catch (std::runtime_error &e) {
+                if (tmp != nullptr) delete[]tmp;
+                throw e;
+            } catch (std::exception &e) {
+                if (tmp != nullptr) delete[]tmp;
+                throw e;
             }
-            clear(); // destroy original (now empty) elements
-            if (this->mIsAllocated) {
-                delete[]this->mData; // deallocate original memory
-            }
-            this->mData = tmp;
-            this->mCapacity = capacity;
-            this->mSize = i;
-            this->mIsAllocated = true;
-
             // potenciálně zvýší kapacitu vektoru na hodnotu parametru capacity.
             //    Pokud je capacity menší nebo rovno aktuální kapacitě, nemá tato funkce žádný efekt.
             //    V opačném případě funkce zvýší kapacitu na capacity prvků, tj. naalokuje nový buffer a do něj přesune stávající obsah vektoru.
@@ -250,19 +258,22 @@ namespace mpc {
             // vrací referenci na prvek vektoru na pozici index (varianta pro konstantní vektor)
         }
 
-        T* begin() {
+        T *begin() {
             return reinterpret_cast<T *>(&this->mData[0]);
             //  vrací iterátor na první prvek vektoru.
         }
-        const T* begin() const {
+
+        const T *begin() const {
             return *reinterpret_cast<const T *>(&this->mData[0]);
             //  vrací konstantní iterátor na první prvek konstantního vektoru.
         }
-        T* end() {
+
+        T *end() {
             return reinterpret_cast<T *>(&this->mData[this->mSize]);
             // vrací iterátor za poslední prvek vektoru.
         }
-        const T* end() const {
+
+        const T *end() const {
             return *reinterpret_cast<const T *>(&this->mData[this->mSize]);
             //   vrací konstantní iterátor za poslední prvek konstantního vektoru.
         }
