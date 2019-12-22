@@ -37,10 +37,22 @@ namespace mpc {
             // Pro volání toho konstruktoru musí hodnotový typ vektoru kopírovací sémantiku podporovat.
         }
 
-        small_vector(small_vector &&other) : mCapacity(N), mSize(0),
+        small_vector(small_vector &&other) noexcept : mCapacity(N), mSize(0),
                                              mData(reinterpret_cast<typename std::aligned_storage<sizeof(T), alignof(T)>::type *>(mBuff)) {
-            std::cout << "prdelmove";
-            // todo: přesouvací konstruktor. Po konstrukci vektoru bude jeho obsah stejný, jako byl obsah vektoru other před touto operací. Obsah vektoru other se bude po této operaci nacházet ve stavu prázdného vektoru.
+            this->reserve(other.mCapacity);
+            if (other.mSize > N) {
+                size_t i = 0;
+                for (; i < other.mSize; i++) {
+                    new(this->mData + i) T(std::move_if_noexcept(*reinterpret_cast<T *>(&other.mData[i])));
+                }
+            } else {
+                size_t i = 0;
+                for (; i < other.mSize; i++) {
+                    new(&this->mBuff[i]) T(std::move_if_noexcept(*reinterpret_cast<T *>(&other.mData[i])));
+                }
+            }
+            this->mSize = other.mSize;
+            // přesouvací konstruktor. Po konstrukci vektoru bude jeho obsah stejný, jako byl obsah vektoru other před touto operací. Obsah vektoru other se bude po této operaci nacházet ve stavu prázdného vektoru.
         }
 
         small_vector(std::initializer_list<T> init) {
