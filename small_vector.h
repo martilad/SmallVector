@@ -166,7 +166,7 @@ namespace mpc {
         }
 
         void push_back(const T &value) {
-            if (this->size() < N) {
+            if (this->size() < N && !this->mIsAllocated) {
                 new(&this->mBuff[this->mSize]) T(value);
             } else if (this->size() >= this->capacity()) {
                 this->reserve(this->mCapacity * 2);
@@ -180,7 +180,7 @@ namespace mpc {
         }
 
         void push_back(T &&value) {
-            if (this->mSize < N) {
+            if (this->mSize < N && !this->mIsAllocated) {
                 new(&this->mBuff[this->mSize]) T(std::move(value));
             } else if (this->mSize >= this->mCapacity) {
                 this->reserve(this->mCapacity * 2);
@@ -194,7 +194,7 @@ namespace mpc {
 
         template<typename... Ts>
         void emplace_back(Ts &&... vs) {
-            if (this->mSize < N) {
+            if (this->mSize < N && !this->mIsAllocated) {
                 new(&this->mBuff[this->mSize]) T(std::forward<Ts>(vs)...);
             } else if (this->mSize >= this->mCapacity) {
                 this->reserve(this->mCapacity * 2);
@@ -207,7 +207,26 @@ namespace mpc {
         }
 
         void resize(size_t size, const T &value = T()) {
-            // todo: změna velikosti vektoru.
+            if (size < this->mSize){
+                for (size_t i = this->mSize - 1; i >= size; i--) {
+                    reinterpret_cast<T *>(&this->mData[i])->~T();
+                }
+                this->mSize = size;
+            }
+            if (size > this->mSize){
+                this->reserve(size);
+                if (size > N || this->mIsAllocated) {
+                    for (size_t i = this->mSize; i < size; i++) {
+                        new(this->mData + i) T(value);
+                    }
+                } else {
+                    for (size_t i = this->mSize; i < size; i++) {
+                        new(&this->mBuff[i]) T(value);
+                    }
+                }
+                this->mSize = size;
+            }
+            //  změna velikosti vektoru.
             //    Pokud je size rovno aktuální velikosti vektoru, nemá tato funkce žádný efekt.
             //    Pokud je size menší než aktuální velikost vektoru, jsou destruovány prvky na pozicích size až size() - 1, a to v klesajícím pořadí jejich pozic. Kapacita vektoru je zachována.
             //    Pokud je size větší než aktuální velikost vektoru, v případě potřeby zvýší kapacitu vektoru tak, aby se do něj vešlo size prvků, a poté přidá na konec vektoru size - size() prvků jako kopie parametru value.
