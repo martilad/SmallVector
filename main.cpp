@@ -11,6 +11,7 @@
 #include "tests/Test8_swap_content.cpp"
 #include "tests/Test9_resizing.cpp"
 #include "tests/Test10_initializer_list.cpp"
+#include "tests/Test11_for_loops.cpp"
 
 int main() {
     basicTest();
@@ -25,6 +26,7 @@ int main() {
     test8::main();
     test9::main();
     test10::main();
+    test11::main();
     return 0;
 }
 
