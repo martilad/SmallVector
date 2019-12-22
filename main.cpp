@@ -10,6 +10,7 @@
 #include "tests/Test7_assignment_operator.cpp"
 #include "tests/Test8_swap_content.cpp"
 #include "tests/Test9_resizing.cpp"
+#include "tests/Test10_initializer_list.cpp"
 
 int main() {
     basicTest();
@@ -23,6 +24,7 @@ int main() {
     test7::main();
     test8::main();
     test9::main();
+    test10::main();
     return 0;
 }
 
