@@ -8,6 +8,7 @@
 #include "tests/Test5_move_constructor.cpp"
 #include "tests/Test6_assignment_operator.cpp"
 #include "tests/Test7_assignment_operator.cpp"
+#include "tests/Test8_swap_content.cpp"
 
 int main() {
     //basicTest();
@@ -19,6 +20,7 @@ int main() {
     test5::main();
     test6::main();
     test7::main();
+    test8::main();
     return 0;
 }
 
