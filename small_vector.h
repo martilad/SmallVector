@@ -22,13 +22,11 @@ namespace mpc {
                                                   mData(reinterpret_cast<typename std::aligned_storage<sizeof(T), alignof(T)>::type *>(mBuff)) {
             this->reserve(other.mSize);
             if (other.mSize > N) {
-                size_t i = 0;
-                for (; i < other.mSize; i++) {
+                for (size_t i = 0; i < other.mSize; i++) {
                     new(this->mData + i) T(*reinterpret_cast<T *>(&other.mData[i]));
                 }
             } else {
-                size_t i = 0;
-                for (; i < other.mSize; i++) {
+                for (size_t i = 0; i < other.mSize; i++) {
                     new(&this->mBuff[i]) T(*reinterpret_cast<T *>(&other.mData[i]));
                 }
             }
@@ -40,16 +38,14 @@ namespace mpc {
         }
 
         small_vector(small_vector &&other) noexcept : mCapacity(N), mSize(0),
-                                             mData(reinterpret_cast<typename std::aligned_storage<sizeof(T), alignof(T)>::type *>(mBuff)) {
+                                                      mData(reinterpret_cast<typename std::aligned_storage<sizeof(T), alignof(T)>::type *>(mBuff)) {
             this->reserve(other.mSize);
             if (other.mSize > N) {
-                size_t i = 0;
-                for (; i < other.mSize; i++) {
+                for (size_t i = 0; i < other.mSize; i++) {
                     new(this->mData + i) T(std::move_if_noexcept(*reinterpret_cast<T *>(&other.mData[i])));
                 }
             } else {
-                size_t i = 0;
-                for (; i < other.mSize; i++) {
+                for (size_t i = 0; i < other.mSize; i++) {
                     new(&this->mBuff[i]) T(std::move_if_noexcept(*reinterpret_cast<T *>(&other.mData[i])));
                 }
             }
@@ -68,7 +64,7 @@ namespace mpc {
             // Destruktor sám o sobě nesmí vyhodit výjimku.
             this->clear();
             if (this->mIsAllocated) {
-                delete []this->mData; // deallocate original memory
+                delete[]this->mData; // deallocate original memory
             }
         }
 
@@ -76,13 +72,11 @@ namespace mpc {
             this->clear();
             this->reserve(other.mSize);
             if (other.mSize > N || this->mIsAllocated) {
-                size_t i = 0;
-                for (; i < other.mSize; i++) {
+                for (size_t i = 0; i < other.mSize; i++) {
                     new(this->mData + i) T(*reinterpret_cast<T *>(&other.mData[i]));
                 }
             } else {
-                size_t i = 0;
-                for (; i < other.mSize; i++) {
+                for (size_t i = 0; i < other.mSize; i++) {
                     new(&this->mBuff[i]) T(*reinterpret_cast<T *>(&other.mData[i]));
                 }
             }
@@ -96,13 +90,11 @@ namespace mpc {
             this->clear();
             this->reserve(other.mSize);
             if (other.mSize > N || this->mIsAllocated) {
-                size_t i = 0;
-                for (; i < other.mSize; i++) {
+                for (size_t i = 0; i < other.mSize; i++) {
                     new(this->mData + i) T(std::move_if_noexcept(*reinterpret_cast<T *>(&other.mData[i])));
                 }
             } else {
-                size_t i = 0;
-                for (; i < other.mSize; i++) {
+                for (size_t i = 0; i < other.mSize; i++) {
                     new(&this->mBuff[i]) T(std::move_if_noexcept(*reinterpret_cast<T *>(&other.mData[i])));
                 }
             }
@@ -150,7 +142,7 @@ namespace mpc {
             }
             clear(); // destroy original (now empty) elements
             if (this->mIsAllocated) {
-                delete []this->mData; // deallocate original memory
+                delete[]this->mData; // deallocate original memory
             }
             this->mData = tmp;
             this->mCapacity = capacity;
@@ -207,13 +199,13 @@ namespace mpc {
         }
 
         void resize(size_t size, const T &value = T()) {
-            if (size < this->mSize){
+            if (size < this->mSize) {
                 for (size_t i = this->mSize - 1; i >= size; i--) {
                     reinterpret_cast<T *>(&this->mData[i])->~T();
                 }
                 this->mSize = size;
             }
-            if (size > this->mSize){
+            if (size > this->mSize) {
                 this->reserve(size);
                 if (size > N || this->mIsAllocated) {
                     for (size_t i = this->mSize; i < size; i++) {
