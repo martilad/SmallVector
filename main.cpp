@@ -9,10 +9,11 @@
 #include "tests/Test6_assignment_operator.cpp"
 #include "tests/Test7_assignment_operator.cpp"
 #include "tests/Test8_swap_content.cpp"
+#include "tests/Test9_resizing.cpp"
 
 int main() {
-    //basicTest();
-    //alignTest();
+    basicTest();
+    alignTest();
     //test1(); // fail with valgrind - valgrind override the new probably
     test2::main();
     test3::main();
@@ -21,6 +22,7 @@ int main() {
     test6::main();
     test7::main();
     test8::main();
+    test9::main();
     return 0;
 }
 
