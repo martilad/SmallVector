@@ -12,6 +12,7 @@
 #include "tests/Test9_resizing.cpp"
 #include "tests/Test10_initializer_list.cpp"
 #include "tests/Test11_for_loops.cpp"
+#include "tests/Test12_exception_when_resizing.cpp"
 
 int main() {
     basicTest();
@@ -27,6 +28,7 @@ int main() {
     test9::main();
     test10::main();
     test11::main();
+    test12::main();
     return 0;
 }
 
