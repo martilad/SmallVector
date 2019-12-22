@@ -54,8 +54,21 @@ namespace mpc {
             // Obsah vektoru other se bude po této operaci nacházet ve stavu prázdného vektoru.
         }
 
-        small_vector(std::initializer_list<T> init) {
-            // todo: konverzní konstruktor, který umožňje naplnit obsah vektoru při jeho inicializaci, a to tak, že zkopíruje prvky inicializačního seznamu init do vznikajícího vektoru.
+        small_vector(std::initializer_list<T> init) : mCapacity(N), mSize(0),
+                                                      mData(reinterpret_cast<typename std::aligned_storage<sizeof(T), alignof(T)>::type *>(mBuff)) {
+            this->reserve(init.size());
+            size_t i = 0;
+            if (init.size() > N) {
+                for (auto it = init.begin(); it < init.end(); ++it, ++i) {
+                    new(this->mData + i) T(std::move_if_noexcept(*it));
+                }
+            } else {
+                for (auto it = init.begin(); it < init.end(); ++it, ++i) {
+                    new(&this->mBuff[i]) T(std::move_if_noexcept(*it));
+                }
+            }
+            this->mSize = init.size();
+            // konverzní konstruktor, který umožňje naplnit obsah vektoru při jeho inicializaci, a to tak, že zkopíruje prvky inicializačního seznamu init do vznikajícího vektoru.
             // Pro volání toho konstruktoru musí hodnotový typ vektoru podporovat kopírovací sémantiku.
         }
 
