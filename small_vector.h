@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
+#include <cstring>
 
 namespace mpc {
 
@@ -19,7 +20,7 @@ namespace mpc {
 
         small_vector(const small_vector &other) : mCapacity(N), mSize(0),
                                                   mData(reinterpret_cast<typename std::aligned_storage<sizeof(T), alignof(T)>::type *>(mBuff)) {
-            this->reserve(other.mCapacity);
+            this->reserve(other.mSize);
             if (other.mSize > N) {
                 size_t i = 0;
                 for (; i < other.mSize; i++) {
@@ -40,7 +41,7 @@ namespace mpc {
 
         small_vector(small_vector &&other) noexcept : mCapacity(N), mSize(0),
                                              mData(reinterpret_cast<typename std::aligned_storage<sizeof(T), alignof(T)>::type *>(mBuff)) {
-            this->reserve(other.mCapacity);
+            this->reserve(other.mSize);
             if (other.mSize > N) {
                 size_t i = 0;
                 for (; i < other.mSize; i++) {
@@ -66,15 +67,15 @@ namespace mpc {
             // destruktor. Korektně destruuje všechny prvky vektoru a případně uvolní dynamicky alokovanou paměť.
             // Destruktor sám o sobě nesmí vyhodit výjimku.
             this->clear();
-            if (this->allocated) {
+            if (this->mIsAllocated) {
                 delete []this->mData; // deallocate original memory
             }
         }
 
         small_vector &operator=(const small_vector &other) {
             this->clear();
-            this->reserve(other.mCapacity);
-            if (other.mSize > N || this->allocated) {
+            this->reserve(other.mSize);
+            if (other.mSize > N || this->mIsAllocated) {
                 size_t i = 0;
                 for (; i < other.mSize; i++) {
                     new(this->mData + i) T(*reinterpret_cast<T *>(&other.mData[i]));
@@ -93,8 +94,8 @@ namespace mpc {
 
         small_vector &operator=(small_vector &&other) {
             this->clear();
-            this->reserve(other.mCapacity);
-            if (other.mSize > N || this->allocated) {
+            this->reserve(other.mSize);
+            if (other.mSize > N || this->mIsAllocated) {
                 size_t i = 0;
                 for (; i < other.mSize; i++) {
                     new(this->mData + i) T(std::move_if_noexcept(*reinterpret_cast<T *>(&other.mData[i])));
@@ -148,13 +149,13 @@ namespace mpc {
                 new(tmp + i) T(std::move_if_noexcept(*reinterpret_cast<T *>(&this->mData[i])));
             }
             clear(); // destroy original (now empty) elements
-            if (this->allocated) {
+            if (this->mIsAllocated) {
                 delete []this->mData; // deallocate original memory
             }
             this->mData = tmp;
             this->mCapacity = capacity;
             this->mSize = i;
-            this->allocated = true;
+            this->mIsAllocated = true;
 
             // potenciálně zvýší kapacitu vektoru na hodnotu parametru capacity.
             //    Pokud je capacity menší nebo rovno aktuální kapacitě, nemá tato funkce žádný efekt.
@@ -237,12 +238,18 @@ namespace mpc {
         const_iterator end() const {
             // todo:  vrací konstantní iterátor za poslední prvek konstantního vektoru.
         }*/
+
         void swap(small_vector &other) {
-            // todo: prohodí obsah vektoru s vektorem other.v
+            if (this == &other) return;
+            std::swap(this->mSize, other.mSize);
+            std::swap(this->mCapacity, other.mCapacity);
+            std::swap(this->mIsAllocated, other.mIsAllocated);
+            std::swap(this->mData, other.mData);
+            // prohodí obsah vektoru s vektorem other.v
         }
 
     private:
-        bool allocated = false;
+        bool mIsAllocated = false;
         size_t mCapacity{};
         size_t mSize{};
         // properly aligned uninitialized storage for N T's
@@ -252,9 +259,10 @@ namespace mpc {
 
 
     }; // class small vector
+
     template<typename T, size_t N>
-    void swap(small_vector<T, N> &a, small_vector<T, N> &b) {
-        //todo: prohození obsahu vektorů a a b.
+    void swap(small_vector<T, N> &a, small_vector<T, N> &b) { //swap two vectors using small_vector swap
+        a.swap(b);
     }
 } // namespace mpc
 
