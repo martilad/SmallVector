@@ -31,10 +31,6 @@ namespace mpc {
                 }
             }
             this->mSize = other.mSize;
-            // kopírovací konstruktor. Po konstrukci vektoru bude jeho obsah stejný, jako obsah vektoru other.
-            // Tj., bude v sobě mít uložený stejný počet prvků a prvky na stejných pozicích budou mít stejné hodnoty (z hledika jejich sémantiky).
-            // Prvky nového vektoru musí být zkonstruovány pomocí kopírovací sémantiky, tj. vzniknou jako kopie příslušného prvku vektoru other.
-            // Pro volání toho konstruktoru musí hodnotový typ vektoru kopírovací sémantiku podporovat.
         }
 
         small_vector(small_vector &&other) noexcept : mCapacity(N), mSize(0),
@@ -50,8 +46,6 @@ namespace mpc {
                 }
             }
             this->mSize = other.mSize;
-            // přesouvací konstruktor. Po konstrukci vektoru bude jeho obsah stejný, jako byl obsah vektoru other před touto operací.
-            // Obsah vektoru other se bude po této operaci nacházet ve stavu prázdného vektoru.
         }
 
         small_vector(std::initializer_list<T> init) : mCapacity(N), mSize(0),
@@ -68,20 +62,16 @@ namespace mpc {
                 }
             }
             this->mSize = init.size();
-            // konverzní konstruktor, který umožňje naplnit obsah vektoru při jeho inicializaci, a to tak, že zkopíruje prvky inicializačního seznamu init do vznikajícího vektoru.
-            // Pro volání toho konstruktoru musí hodnotový typ vektoru podporovat kopírovací sémantiku.
         }
 
-        ~small_vector() {
-            // destruktor. Korektně destruuje všechny prvky vektoru a případně uvolní dynamicky alokovanou paměť.
-            // Destruktor sám o sobě nesmí vyhodit výjimku.
+        ~small_vector() noexcept {
             this->clear();
             if (this->mIsAllocated) {
                 delete[]this->mData; // deallocate original memory
             }
         }
 
-        small_vector &operator=(const small_vector &other) {
+        small_vector &operator=(const small_vector &other) { // copy assignment operator -- both vectors will have same content
             this->clear();
             this->reserve(other.mSize);
             if (other.mSize > N || this->mIsAllocated) {
@@ -95,11 +85,9 @@ namespace mpc {
             }
             this->mSize = other.mSize;
             return *this;
-            // kopírovací přiřazovací operátor. Po aplikaci operátoru bude obsah vektoru stejný, jako obsah vektoru other.
-            // Vrací referenci na sebe sama.
         }
 
-        small_vector &operator=(small_vector &&other) {
+        small_vector &operator=(small_vector &&other) { // move assignment operator - other will be empty after operation
             this->clear();
             this->reserve(other.mSize);
             if (other.mSize > N || this->mIsAllocated) {
@@ -114,9 +102,6 @@ namespace mpc {
             this->mSize = other.mSize;
             other.clear();
             return *this;
-            // přesouvací přiřazovací operátor. Po aplikaci operátoru bude obsah vektoru stejný,
-            //  jako byl obsah vektoru other před touto operací. Obsah vektoru other se bude po této operaci nacházet ve stavu prázdného vektoru.
-            // Vrací referenci na sebe sama.
         }
 
         size_t size() const {
@@ -127,23 +112,26 @@ namespace mpc {
             return this->mCapacity;
         }
 
-        T *data() {
+        T *data() { // return pointer to the firs element in the vector
             return reinterpret_cast<T *>(this->mData);
         };
 
-        const T *data() const {
+        const T *data() const { // return const pointer to the first element in vector
             return reinterpret_cast<const T *>(this->mData);
-            // vrátí ukazatel na první prvek vektoru (varianta pro konstantní vektor).
         }
 
-        void clear() {
+        void clear() { // erase elements in array - decreasing index order
             for (int i = this->mSize - 1; i >= 0; i--) {
                 reinterpret_cast<T *>(&this->mData[i])->~T();
             }
             this->mSize = 0;
-            // vymaže obsah vektoru, tj. destruuje všechny jeho prvky, a to v klesajícím pořadí jejich pozic (indexů).
         }
 
+        /**
+         * Allocate new memory for the vector and move content to new vector and destroy the old one
+         * use move semantic if is noexcept
+         * @param capacity new capacity of the vector
+         */
         void reserve(size_t capacity) {
             if (capacity <= this->mCapacity) return;
             // allocate new memory
@@ -170,15 +158,9 @@ namespace mpc {
                 if (tmp != nullptr) delete[]tmp;
                 throw e;
             }
-            // potenciálně zvýší kapacitu vektoru na hodnotu parametru capacity.
-            //    Pokud je capacity menší nebo rovno aktuální kapacitě, nemá tato funkce žádný efekt.
-            //    V opačném případě funkce zvýší kapacitu na capacity prvků, tj. naalokuje nový buffer a do něj přesune stávající obsah vektoru.
-            //    [Update 3.11.2019] Pokud hodnotový typ nemá noexcept přesouvací konstruktor,
-            //    dostane před přesouvacím konstruktorem při přesunu prvků přednost kopírovací konstruktor (viz std::move_if_noexcept).
-            //
         }
 
-        void push_back(const T &value) {
+        void push_back(const T &value) { // inserts a new element at the end of the vector - use copy semantic
             if (this->size() < N && !this->mIsAllocated) {
                 new(&this->mBuff[this->mSize]) T(value);
             } else if (this->size() >= this->capacity()) {
@@ -188,11 +170,9 @@ namespace mpc {
                 new(this->mData + this->mSize) T(value);
             }
             this->mSize++;
-            //  vloží na konec vektoru nový prvek, který vznikne kopírováním obsahu z parametru value.
-            //    Pro volání této funkce musí hodnotový typ vektoru podporovat kopírovací sémantiku.
         }
 
-        void push_back(T &&value) {
+        void push_back(T &&value) { // inserts a new element at the end of the vector - use moving semantic
             if (this->mSize < N && !this->mIsAllocated) {
                 new(&this->mBuff[this->mSize]) T(std::move(value));
             } else if (this->mSize >= this->mCapacity) {
@@ -202,11 +182,10 @@ namespace mpc {
                 new(this->mData + this->mSize) T(std::move(value));
             }
             this->mSize++;
-            //  vloží na konec vektoru nový prvek, který vnikne přesunem obsahu z parametru value.
         };
 
         template<typename... Ts>
-        void emplace_back(Ts &&... vs) {
+        void emplace_back(Ts &&... vs) { // insert new last element created with arguments vs ... (perfect forwarding)
             if (this->mSize < N && !this->mIsAllocated) {
                 new(&this->mBuff[this->mSize]) T(std::forward<Ts>(vs)...);
             } else if (this->mSize >= this->mCapacity) {
@@ -216,9 +195,13 @@ namespace mpc {
                 new(this->mData + this->mSize) T(std::forward<Ts>(vs)...);
             }
             this->mSize++;
-            // vloží na konec vektoru nový prvek, pro jehož konstrukci budou jako argumenty předány parametry vs..., a to pomocí techniky perfect forwarding.v
         }
 
+        /**
+         * Resize function - To call this function, the vector value type must support copy semantics.
+         * @param size new size of vector - if is smaller the elements are destruct
+         * @param value value whithc is copy to new element if size is bigger than this->mSize
+         */
         void resize(size_t size, const T &value = T()) {
             if (size < this->mSize) {
                 for (size_t i = this->mSize - 1; i >= size; i--) {
@@ -239,61 +222,48 @@ namespace mpc {
                 }
                 this->mSize = size;
             }
-            //  změna velikosti vektoru.
-            //    Pokud je size rovno aktuální velikosti vektoru, nemá tato funkce žádný efekt.
-            //    Pokud je size menší než aktuální velikost vektoru, jsou destruovány prvky na pozicích size až size() - 1, a to v klesajícím pořadí jejich pozic. Kapacita vektoru je zachována.
-            //    Pokud je size větší než aktuální velikost vektoru, v případě potřeby zvýší kapacitu vektoru tak, aby se do něj vešlo size prvků, a poté přidá na konec vektoru size - size() prvků jako kopie parametru value.
-            //    Pro volání této funkce musí hodnotový typ vektoru podporovat kopírovací sémantiku.
-            //    V rámci tohoto textu znamená pojem „velikost vektoru“ počet jeho prvků, nikoliv velikost objektu typu mpc::small_vector v bytech (zjistitelnou pomocí operátoru sizeof).
         }
 
-        T &operator[](size_t index) {
+        T &operator[](size_t index) { // return reference on element at index
             return *reinterpret_cast<T *>(&this->mData[index]);
-            //return this->mData[index];
-            //  vrací referenci na prvek vektoru na pozici index.
         }
 
-        const T &operator[](size_t index) const {
+        const T &operator[](size_t index) const { // return const reference on element at index
             return *reinterpret_cast<const T *>(&this->mData[index]);
-            // vrací referenci na prvek vektoru na pozici index (varianta pro konstantní vektor)
         }
 
-        T *begin() {
+        T *begin() { // return iterator on first element in array
             return reinterpret_cast<T *>(&this->mData[0]);
             //  vrací iterátor na první prvek vektoru.
         }
 
-        const T *begin() const {
+        const T *begin() const { // return const iterator on first element in array
             return *reinterpret_cast<const T *>(&this->mData[0]);
-            //  vrací konstantní iterátor na první prvek konstantního vektoru.
         }
 
-        T *end() {
+        T *end() { // return iterator on last element in array
             return reinterpret_cast<T *>(&this->mData[this->mSize]);
-            // vrací iterátor za poslední prvek vektoru.
         }
 
-        const T *end() const {
+        const T *end() const { // return const iterator on last element in array
             return *reinterpret_cast<const T *>(&this->mData[this->mSize]);
-            //   vrací konstantní iterátor za poslední prvek konstantního vektoru.
         }
 
-        void swap(small_vector &other) {
+        void swap(small_vector &other) noexcept { // swap content with small_vector other
             if (this == &other) return;
             std::swap(this->mSize, other.mSize);
             std::swap(this->mCapacity, other.mCapacity);
             std::swap(this->mIsAllocated, other.mIsAllocated);
             std::swap(this->mData, other.mData);
-            // prohodí obsah vektoru s vektorem other.v
         }
 
     private:
+        // switch to check if is use buffer or memory are allocated
         bool mIsAllocated = false;
         size_t mCapacity{};
         size_t mSize{};
-        // properly aligned uninitialized storage for N T's
+        //Aligned_storage which is "type suitable for use as uninitialized storage" no need default constructor of type
         typename std::aligned_storage<sizeof(T), alignof(T)>::type mBuff[N];
-        //alignas(alignof(T)) T mBuff[N * sizeof(T)];
         typename std::aligned_storage<sizeof(T), alignof(T)>::type *mData = nullptr;
 
 
