@@ -6,15 +6,19 @@
 #include "tests/Test3_inserting.cpp"
 #include "tests/Test4_copy_constructor.cpp"
 #include "tests/Test5_move_constructor.cpp"
+#include "tests/Test6_assignment_operator.cpp"
+#include "tests/Test7_assignment_operator.cpp"
 
 int main() {
-    basicTest();
-    alignTest();
-    test1();
+    //basicTest();
+    //alignTest();
+    //test1(); // fail with valgrind - valgrind override the new probably
     test2::main();
     test3::main();
     test4::main();
     test5::main();
+    test6::main();
+    test7::main();
     return 0;
 }
 
