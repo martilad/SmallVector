@@ -1,5 +1,6 @@
 #include <cassert>
 #include <cstddef>
+namespace test2{
 
 class Y
 {
@@ -16,7 +17,7 @@ public:
     static size_t live() { return live_; }
 };
 
-int test2()
+int main()
 {
     mpc::small_vector<Y, 2> v;
 
@@ -42,3 +43,4 @@ int test2()
 
 size_t Y::created_ = 0;
 size_t Y::live_ = 0;
+}
