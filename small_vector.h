@@ -66,7 +66,7 @@ namespace mpc {
 
         ~small_vector() noexcept {
             this->clear();
-            if (this->mIsAllocated) {
+            if (this->mData != this->mBuff) {
                 delete[]this->mData; // deallocate original memory
             }
         }
@@ -74,7 +74,7 @@ namespace mpc {
         small_vector &operator=(const small_vector &other) { // copy assignment operator -- both vectors will have same content
             this->clear();
             this->reserve(other.mSize);
-            if (other.mSize > N || this->mIsAllocated) {
+            if (other.mSize > N || (this->mData != this->mBuff)) {
                 for (size_t i = 0; i < other.mSize; i++) {
                     new(this->mData + i) T(*reinterpret_cast<T *>(&other.mData[i]));
                 }
@@ -90,7 +90,7 @@ namespace mpc {
         small_vector &operator=(small_vector &&other) { // move assignment operator - other will be empty after operation
             this->clear();
             this->reserve(other.mSize);
-            if (other.mSize > N || this->mIsAllocated) {
+            if (other.mSize > N || (this->mData != this->mBuff)) {
                 for (size_t i = 0; i < other.mSize; i++) {
                     new(this->mData + i) T(std::move_if_noexcept(*reinterpret_cast<T *>(&other.mData[i])));
                 }
@@ -144,13 +144,12 @@ namespace mpc {
                     new(tmp + i) T(std::move_if_noexcept(*reinterpret_cast<T *>(&this->mData[i])));
                 }
                 clear(); // destroy original (now empty) elements
-                if (this->mIsAllocated) {
+                if (this->mData != this->mBuff) {
                     delete[]this->mData; // deallocate original memory
                 }
                 this->mData = tmp;
                 this->mCapacity = capacity;
                 this->mSize = i;
-                this->mIsAllocated = true;
             } catch (std::runtime_error &e) {
                 if (tmp != nullptr) delete[]tmp;
                 throw e;
@@ -161,7 +160,7 @@ namespace mpc {
         }
 
         void push_back(const T &value) { // inserts a new element at the end of the vector - use copy semantic
-            if (this->size() < N && !this->mIsAllocated) {
+            if (this->size() < N && this->mData == this->mBuff) {
                 new(&this->mBuff[this->mSize]) T(value);
             } else if (this->size() >= this->capacity()) {
                 this->reserve(this->mCapacity * 2);
@@ -173,7 +172,7 @@ namespace mpc {
         }
 
         void push_back(T &&value) { // inserts a new element at the end of the vector - use moving semantic
-            if (this->mSize < N && !this->mIsAllocated) {
+            if (this->mSize < N && this->mData == this->mBuff) {
                 new(&this->mBuff[this->mSize]) T(std::move(value));
             } else if (this->mSize >= this->mCapacity) {
                 this->reserve(this->mCapacity * 2);
@@ -186,7 +185,7 @@ namespace mpc {
 
         template<typename... Ts>
         void emplace_back(Ts &&... vs) { // insert new last element created with arguments vs ... (perfect forwarding)
-            if (this->mSize < N && !this->mIsAllocated) {
+            if (this->mSize < N && this->mData == this->mBuff) {
                 new(&this->mBuff[this->mSize]) T(std::forward<Ts>(vs)...);
             } else if (this->mSize >= this->mCapacity) {
                 this->reserve(this->mCapacity * 2);
@@ -211,7 +210,7 @@ namespace mpc {
             }
             if (size > this->mSize) {
                 this->reserve(size);
-                if (size > N || this->mIsAllocated) {
+                if (size > N || (this->mData != this->mBuff)) {
                     for (size_t i = this->mSize; i < size; i++) {
                         new(this->mData + i) T(value);
                     }
@@ -253,13 +252,10 @@ namespace mpc {
             if (this == &other) return;
             std::swap(this->mSize, other.mSize);
             std::swap(this->mCapacity, other.mCapacity);
-            std::swap(this->mIsAllocated, other.mIsAllocated);
             std::swap(this->mData, other.mData);
         }
 
     private:
-        // switch to check if is use buffer or memory are allocated
-        bool mIsAllocated = false;
         size_t mCapacity{};
         size_t mSize{};
         //Aligned_storage which is "type suitable for use as uninitialized storage" no need default constructor of type
